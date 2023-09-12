@@ -13,10 +13,21 @@ import re
 import urllib.parse as ul
 
 
+# load config
 CONFIG = dotenv_values(".env")
 URL = CONFIG.get("URL")
+try:
+    CHANNELS = CONFIG.get("CHANNELS")
+    CHANNELS = CHANNELS.split(",")
+except Exception as err:
+    print(err)
+    CHANNELS = []
+finally:
+    CHANNELS.append("#skr")  # always join testing channel
+    CHANNELS = set(CHANNELS)  # dedupe, just in case
 
 
+# load previous data
 MESSAGES = {}
 try:
     with open("MESSAGES.json", "r") as f:
@@ -24,29 +35,32 @@ try:
 except Exception as err:
     print(err)
     pass
-CHANNELS = ["#skr", "#greenroom"]
 NSPASS = CONFIG.get("NSPASS")
 
-ADMINS = [
-    "cottongin",
-    "SirSpencer",
-    "DuhLaurien",
-    "boo-bury",
-    "lavish",
-    "SirVo",
-    "adamc1999",
-    "dave",
-]
 
-TEXTTOSTRIP = "Text - click to edit"
+# load admins
+try:
+    ADMINS = CONFIG.get("ADMINS")
+    ADMINS = ADMINS.split(",")
+except Exception as err:
+    print(err)
+    ADMINS = []
+finally:
+    ADMINS.append("cottongin")  # always make me admin
+    ADMINS = set(ADMINS)  # dedupe, just in case
+
+
+# splitkit puts default text into fields if the producer leaves them blank, but we don't
+# need to see that on IRC
+TEXTTOSTRIP = CONFIG.get("TEXTTOSTRIP", "Text - click to edit")
 
 bot = Client(
-    host="irc.zeronode.net",
-    port=6667,
-    # secure=False,
-    user="splitkit-relay",
-    realname="splitkit relay",
-    nick="splitkit-relay",
+    host=CONFIG.get("HOST"),
+    port=CONFIG.get("PORT"),
+    secure=CONFIG.get("SECURE", False),
+    user=CONFIG.get("USER"),
+    realname=CONFIG.get("REALNAME"),
+    nick=CONFIG.get("NICK"),
 )
 
 socket = socketio.AsyncClient()
@@ -249,6 +263,17 @@ async def discon(message):
         return
     await socket.disconnect()
     await message.reply("Disconnected")
+
+
+@bot.on_message(re.compile("^`reload"))
+async def reload(message):
+    """reloads configuration"""
+    global CONFIG, URL
+    if message.sender.name not in ADMINS:
+        return
+    CONFIG = dotenv_values(".env")
+    URL = CONFIG.get("URL")
+    await message.reply("OK")
 
 
 @bot.on_message(re.compile("^`np"))
