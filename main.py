@@ -15,7 +15,7 @@ import urllib.parse as ul
 
 # load config
 CONFIG = dotenv_values(".env")
-URL = CONFIG.get("URL")
+URL = CONFIG.get("URL", "")
 try:
     CHANNELS = CONFIG.get("CHANNELS")
     CHANNELS = CHANNELS.split(",")
@@ -188,7 +188,8 @@ async def connected():
     if "splitkit" in URL:
         uuid = URL.split("live/")[-1].replace("/", "")
         URL = f"https://curiohoster.com/event?event_id={uuid}"
-    await socket.connect(URL, namespaces=["/event"])
+    if URL:
+        await socket.connect(URL, namespaces=["/event"])
 
 
 @bot.on_message(re.compile("^`join"))
