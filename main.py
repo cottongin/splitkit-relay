@@ -315,3 +315,11 @@ if __name__ == "__main__":
         tasks.exception()
     finally:
         loop.close()
+
+"""
+TODO
+[ ] OoP/Classes for bot and socket
+[ ] support listening to multiple sockets at once
+    [ ] track socket per channel
+[ ] smarter admin support
+"""
