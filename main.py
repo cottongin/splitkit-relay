@@ -42,8 +42,8 @@ TEXTTOSTRIP = "Text - click to edit"
 
 bot = Client(
     host="irc.zeronode.net",
-    port=6697,
-    secure=True,
+    port=6667,
+    # secure=False,
     user="splitkit-relay",
     realname="splitkit relay",
     nick="splitkit-relay",
@@ -162,6 +162,7 @@ async def disconnect():
 
 @bot.on_connected()
 async def connected():
+    global URL
     nickserv_ok = bot.await_message(
         sender="NickServ", message=re.compile("Password accepted")
     )
