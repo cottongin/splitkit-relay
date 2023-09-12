@@ -41,5 +41,20 @@ If you provided the URL in your `.env` file the bot should immediately start lis
 
 Otherwise, as previously mentioned, send the ``​`connect`` command with your copied splitkit websocket URL.
 
+## Bot commands
+| Command            | Description                                           | Admin-only? |
+| ------------------ | ----------------------------------------------------- | ----------- |
+| ``​`join #channel`` | This tells the bot to `/join #channel`                | Yes         |
+| ``​`part``          | This tells the bot to leave whatever you send it from | Yes         |
+| ``​`connect URL``   | This tells the bot to connect to the websocket URL provided | Yes   |
+| ``​`disconnect``    | This tells the bot to disconnect from the active websocket | Yes    |
+| ``​`reload``        | This tells the bot to reload its configuration (`.env`)                | Yes         |
+| ``​`np``            | This emits the last message received from the websocket               | **No**      |
+| ``​`quit``          | This tells the bot to shutdown and quit                | Yes         |
+
+----    
 #### Troubleshooting
 There is very minimal logging, most errors are just printed to `stdout`
+
+----
+Special thanks to [StevenB](https://github.com/thebells1111) for creating and maintaining [The Split Kit](https://thesplitkit.com)
