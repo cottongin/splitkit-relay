@@ -54,10 +54,11 @@ finally:
 # need to see that on IRC
 TEXTTOSTRIP = CONFIG.get("TEXTTOSTRIP", "Text - click to edit")
 
+sec = True if CONFIG.get("SECURE") else False
 bot = Client(
     host=CONFIG.get("HOST"),
     port=CONFIG.get("PORT"),
-    secure=CONFIG.get("SECURE", False),
+    secure=sec,
     user=CONFIG.get("USER"),
     realname=CONFIG.get("REALNAME"),
     nick=CONFIG.get("NICK"),
