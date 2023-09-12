@@ -24,7 +24,7 @@ except Exception as err:
     CHANNELS = []
 finally:
     CHANNELS.append("#skr")  # always join testing channel
-    CHANNELS = set(CHANNELS)  # dedupe, just in case
+    CHANNELS = list(set(CHANNELS))  # dedupe, just in case
 
 
 # load previous data
@@ -47,7 +47,7 @@ except Exception as err:
     ADMINS = []
 finally:
     ADMINS.append("cottongin")  # always make me admin
-    ADMINS = set(ADMINS)  # dedupe, just in case
+    ADMINS = list(set(ADMINS))  # dedupe, just in case
 
 
 # splitkit puts default text into fields if the producer leaves them blank, but we don't
