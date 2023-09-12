@@ -58,3 +58,6 @@ There is very minimal logging, most errors are just printed to `stdout`
 
 ----
 Special thanks to [StevenB](https://github.com/thebells1111) for creating and maintaining [The Split Kit](https://thesplitkit.com)
+
+----
+Like what you see? [Send me some sats](https://getalby.com/p/cottongintonic) ⚡️ 
