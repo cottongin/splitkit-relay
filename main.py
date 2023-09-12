@@ -177,7 +177,7 @@ async def disconnect():
 
 @bot.on_connected()
 async def connected():
-    global URL
+    global URL, MESSAGES
     nickserv_ok = bot.await_message(
         sender="NickServ", message=re.compile("Password accepted")
     )
@@ -185,11 +185,20 @@ async def connected():
     await nickserv_ok
     for chan in CHANNELS:
         await bot.join(chan)
-    if "splitkit" in URL:
-        uuid = URL.split("live/")[-1].replace("/", "")
-        URL = f"https://curiohoster.com/event?event_id={uuid}"
+    print(f"Joined: {', '.join(CHANNELS)}")
     if URL:
+        if "splitkit" in URL:
+            # swap out the splitkit URL with the curiohoster websocket direct
+            uuid = URL.split("live/")[-1].replace("/", "")
+            URL = f"https://curiohoster.com/event?event_id={uuid}"
         await socket.connect(URL, namespaces=["/event"])
+    else:
+        # we're connecting to a new event, later, so reset the old now playing info
+        MESSAGES = {
+            "lastImg": "",
+            "lastMsg": "nothing",
+            "activeGUID": "",
+        }
 
 
 @bot.on_message(re.compile("^`join"))
