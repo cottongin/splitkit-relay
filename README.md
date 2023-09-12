@@ -29,7 +29,7 @@ Now click the `Live Value Link` button
 Finally, copy the bare Live Value Link or copy button
 ![Live Value Link URL](images/Xmzn6OBj@2x.png)
 
-You can either paste this URL into your `.env` file, or you can tell the bot to connect to it via IRC and the command ```connect URL``
+You can either paste this URL into your `.env` file, or you can tell the bot to connect to it via IRC and the command ``​`connect URL``
 
 Now run
 ```bash
@@ -37,7 +37,9 @@ python main.py
 ```
 The bot should connect to IRC if you've configured everything in your `.env` file correctly and join whichever channel(s) you've defined.
 
-If you provided the URL in your `.env` file the bot should immediately start listening to your splitkit event and emit at least one message if you've already started said event
+If you provided the URL in your `.env` file the bot should immediately start listening to your splitkit event and emit at least one message if you've already started said event.
+
+Otherwise, as previously mentioned, send the ``​`connect`` command with your copied splitkit websocket URL.
 
 #### Troubleshooting
 There is very minimal logging, most errors are just printed to `stdout`
