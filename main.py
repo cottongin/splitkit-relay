@@ -2,25 +2,69 @@
 # ruff: noqa: E501, F841
 
 from dotenv import dotenv_values
+import colorlog
 from asif.bot import Client, Channel
 from asif.util import bold, no_highlight
 
 import aiohttp
+import argparse
 import asyncio
 import json
+import logging
 import socketio
 import re
+import sys
 import urllib.parse as ul
 
+# setup logging
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '-l',
+    '--loglevel',
+    default='warning',
+    help='Provide logging level. Example --loglevel debug, default=warning'
+)
+args = parser.parse_args()
+logging.basicConfig(
+    level=args.loglevel.upper(),
+)
+logger = colorlog.getLogger()
+stdout = colorlog.StreamHandler(stream=sys.stdout)
+fmt = colorlog.ColoredFormatter(
+    "%(white)s%(asctime)s%(reset)s | %(name)-15s | %(log_color)s%(levelname)-8s%(reset)s | %(blue)s%(filename)s:%(lineno)s%(reset)s | %(process)d >>> %(log_color)s%(message)s%(reset)s"
+)
+stdout.setFormatter(fmt)
+if (logger.hasHandlers()):
+    logger.handlers.clear()
+logger.propagate = False
+logger.addHandler(stdout)
+logger.info("Logger initialized.")
 
-# load config
+# load .env file
 CONFIG = dotenv_values(".env")
+
+# load admins
+ADMINS = None
+try:
+    ADMINS = CONFIG.get("ADMINS")
+    ADMINS = ADMINS.split(",")
+except Exception as err:
+    logger.error(err)
+    # if we don't have any admins, we can't control the bot from IRC
+    logger.error("ERROR: You need to configure at least one bot admin")
+    sys.exit()
+# sanity
+if not ADMINS:
+    logger.error("ERROR: You need to configure at least one bot admin")
+    sys.exit()
+
+# load the rest of the configuration
 URL = CONFIG.get("URL", "")
 try:
     CHANNELS = CONFIG.get("CHANNELS")
     CHANNELS = CHANNELS.split(",")
 except Exception as err:
-    print(err)
+    logger.error(err)
     CHANNELS = []
 finally:
     CHANNELS.append("#skr")  # always join testing channel
@@ -33,21 +77,9 @@ try:
     with open("MESSAGES.json", "r") as f:
         MESSAGES = json.load(f)
 except Exception as err:
-    print(err)
+    logger.error(err)
     pass
 NSPASS = CONFIG.get("NSPASS")
-
-
-# load admins
-try:
-    ADMINS = CONFIG.get("ADMINS")
-    ADMINS = ADMINS.split(",")
-except Exception as err:
-    print(err)
-    ADMINS = []
-finally:
-    ADMINS.append("cottongin")  # always make me admin
-    ADMINS = list(set(ADMINS))  # dedupe, just in case
 
 
 # splitkit puts default text into fields if the producer leaves them blank, but we don't
@@ -69,7 +101,7 @@ socket = socketio.AsyncClient()
 
 @socket.event(namespace="/event")
 async def connect():
-    print("connection established")
+    logger.info("connection established")
 
 
 ###
@@ -83,7 +115,7 @@ async def my_message(event, data):
     global MESSAGES
 
     _ = data.pop("value", None)  # remove value information that the relay doesn't use
-    print(f"Event received: {event}\nMessage: {data}")
+    logger.info(f"Event received: {event}\nMessage: {data}")
 
     # set the last message to nothing so the relay does not emit something is playing when `np is used
     if not data:
@@ -121,6 +153,7 @@ async def my_message(event, data):
     try:
         line.remove(TEXTTOSTRIP)
     except ValueError as _:
+        logger.error(_)
         pass
 
     details = " • ".join(filter(None, line)).strip()
@@ -163,16 +196,16 @@ async def postToYourls(params={}):
             async with session.get(
                 "https://therelay.cc/yourls-api.php", params=params
             ) as resp:
-                print(resp.status)
+                logger.debug(resp.status)
                 return await resp.json()
     except Exception as err:
-        print(err)
+        logger.error(err)
         return {}
 
 
 @socket.event(namespace="/event")
 async def disconnect():
-    print(f"disconnected from server")
+    logger.info(f"disconnected from server")
 
 
 @bot.on_connected()
@@ -184,8 +217,8 @@ async def connected():
     await bot.message("NickServ", "IDENTIFY {}".format(NSPASS))
     await nickserv_ok
     for chan in CHANNELS:
+        logger.debug(f"Joining {chan}")
         await bot.join(chan)
-    print(f"Joined: {', '.join(CHANNELS)}")
     if URL:
         if "splitkit" in URL:
             # swap out the splitkit URL with the curiohoster websocket direct
@@ -211,8 +244,11 @@ async def join(message):
         await bot.join(channel)
         CHANNELS.append(channel)
     except Exception as err:
-        print(err)
-        await bot.get_user("cottongin").message("error joining {}".format(channel))
+        logger.error(err)
+        # the first nick in the ADMINS list is considered the primary bot operator
+        # this will send a message to them saying the /join failed
+        target = ADMINS[0] 
+        await bot.get_user(target).message("error joining {}".format(channel))
 
 
 @bot.on_message(
@@ -223,7 +259,10 @@ async def part(message):
     if message.sender.name not in ADMINS:
         return
     await message.recipient.part()
-    await bot.get_user("cottongin").message("Left {}".format(message.recipient))
+    # the first nick in the ADMINS list is considered the primary bot operator
+    # this will send a message to them saying the bot left a channel
+    target = ADMINS[0]
+    await bot.get_user(target).message("Left {}".format(message.recipient))
 
 
 @bot.on_message(re.compile("^`connect"))
@@ -234,7 +273,7 @@ async def con(message):
         url = message.text.partition(" ")[2]
         url = url.strip()
     except KeyError as err:
-        print(err)
+        logger.error(err)
         url = URL
     if "splitkit" in url:
         uuid = url.split("live/")[-1].replace("/", "")
@@ -245,7 +284,7 @@ async def con(message):
         await socket.connect(url, namespaces=["/event"])
         await message.reply("Connected!")
     except Exception as err:
-        print(err)
+        logger.error(err)
         await message.reply("I couldn't connect")
 
 
@@ -257,12 +296,12 @@ async def quit(message):
         with open("MESSAGES.json", "w") as f:
             json.dump(MESSAGES, f)
     except Exception as err:
-        print(err)
+        logger.error(err)
         pass
     try:
         text = message.text.partition(" ")[2].strip()
     except Exception as err:
-        print(err)
+        logger.error(err)
         text = "Goodbye!"
     await socket.disconnect()
     await bot.quit(text or "Goodbye!")
@@ -279,11 +318,17 @@ async def discon(message):
 @bot.on_message(re.compile("^`reload"))
 async def reload(message):
     """reloads configuration"""
-    global CONFIG, URL
+    global CONFIG, URL, ADMINS, TEXTTOSTRIP
     if message.sender.name not in ADMINS:
         return
     CONFIG = dotenv_values(".env")
-    URL = CONFIG.get("URL")
+    try:
+        ADMINS = CONFIG.get("ADMINS", ADMINS)
+        ADMINS = ADMINS.split(",")
+    except Exception as err:
+        logger.error(err)
+    TEXTTOSTRIP = CONFIG.get("TEXTTOSTRIP", TEXTTOSTRIP)
+    URL = CONFIG.get("URL", URL)
     await message.reply("OK")
 
 
@@ -307,9 +352,9 @@ if __name__ == "__main__":
 
     try:
         loop.run_until_complete(tasks)
-    except KeyboardInterrupt as e:
-        print(e)
-        print("Caught keyboard interrupt. Canceling tasks...")
+    except KeyboardInterrupt as err:
+        logger.error(err)
+        logger.info("Caught keyboard interrupt. Canceling tasks...")
         tasks.cancel()
         loop.run_forever()
         tasks.exception()
