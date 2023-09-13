@@ -10,7 +10,6 @@ import aiohttp
 import argparse
 import asyncio
 import json
-import logging
 import socketio
 import re
 import sys
@@ -25,7 +24,7 @@ parser.add_argument(
     help='Provide logging level. Example --loglevel debug, default=warning'
 )
 args = parser.parse_args()
-logging.basicConfig(
+colorlog.basicConfig(
     level=args.loglevel.upper(),
 )
 logger = colorlog.getLogger()
@@ -48,10 +47,12 @@ ADMINS = None
 try:
     ADMINS = CONFIG.get("ADMINS")
     ADMINS = ADMINS.split(",")
-except Exception as err:
-    logger.error(err)
+except AttributeError as _:
     # if we don't have any admins, we can't control the bot from IRC
     logger.error("ERROR: You need to configure at least one bot admin")
+    sys.exit()
+except Exception as err:
+    logger.exception(err)
     sys.exit()
 # sanity
 if not ADMINS:
@@ -64,7 +65,7 @@ try:
     CHANNELS = CONFIG.get("CHANNELS")
     CHANNELS = CHANNELS.split(",")
 except Exception as err:
-    logger.error(err)
+    logger.exception(err)
     CHANNELS = []
 finally:
     CHANNELS.append("#skr")  # always join testing channel
@@ -77,7 +78,7 @@ try:
     with open("MESSAGES.json", "r") as f:
         MESSAGES = json.load(f)
 except Exception as err:
-    logger.error(err)
+    logger.exception(err)
     pass
 NSPASS = CONFIG.get("NSPASS")
 
@@ -155,6 +156,9 @@ async def my_message(event, data):
     except ValueError as _:
         logger.error(_)
         pass
+    except Exception as _:
+        logger.exception(_)
+        pass
 
     details = " • ".join(filter(None, line)).strip()
     if " • " == details:
@@ -199,7 +203,7 @@ async def postToYourls(params={}):
                 logger.debug(resp.status)
                 return await resp.json()
     except Exception as err:
-        logger.error(err)
+        logger.exception(err)
         return {}
 
 
@@ -244,7 +248,7 @@ async def join(message):
         await bot.join(channel)
         CHANNELS.append(channel)
     except Exception as err:
-        logger.error(err)
+        logger.exception(err)
         # the first nick in the ADMINS list is considered the primary bot operator
         # this will send a message to them saying the /join failed
         target = ADMINS[0] 
@@ -258,6 +262,13 @@ async def join(message):
 async def part(message):
     if message.sender.name not in ADMINS:
         return
+    global CHANNELS
+    chan = message.recipient
+    try:
+        CHANNELS.remove(chan)
+    except Exception as err:
+        logger.exception(err)
+        pass
     await message.recipient.part()
     # the first nick in the ADMINS list is considered the primary bot operator
     # this will send a message to them saying the bot left a channel
@@ -273,7 +284,7 @@ async def con(message):
         url = message.text.partition(" ")[2]
         url = url.strip()
     except KeyError as err:
-        logger.error(err)
+        logger.warning(f"URL error: {err}")
         url = URL
     if "splitkit" in url:
         uuid = url.split("live/")[-1].replace("/", "")
@@ -284,7 +295,7 @@ async def con(message):
         await socket.connect(url, namespaces=["/event"])
         await message.reply("Connected!")
     except Exception as err:
-        logger.error(err)
+        logger.exception(err)
         await message.reply("I couldn't connect")
 
 
@@ -301,7 +312,7 @@ async def quit(message):
     try:
         text = message.text.partition(" ")[2].strip()
     except Exception as err:
-        logger.error(err)
+        logger.exception(err)
         text = "Goodbye!"
     await socket.disconnect()
     await bot.quit(text or "Goodbye!")
@@ -326,7 +337,7 @@ async def reload(message):
         ADMINS = CONFIG.get("ADMINS", ADMINS)
         ADMINS = ADMINS.split(",")
     except Exception as err:
-        logger.error(err)
+        logger.exception(err)
     TEXTTOSTRIP = CONFIG.get("TEXTTOSTRIP", TEXTTOSTRIP)
     URL = CONFIG.get("URL", URL)
     await message.reply("OK")
@@ -353,7 +364,7 @@ if __name__ == "__main__":
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt as err:
-        logger.error(err)
+        logger.exception(err)
         logger.info("Caught keyboard interrupt. Canceling tasks...")
         tasks.cancel()
         loop.run_forever()
