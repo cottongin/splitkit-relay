@@ -7,11 +7,13 @@ Simple IRC bot that relays messages from https://thesplitkit.com
 ### Installation
 
 #### Requirements:
+`splitkit-relay` was built and tested with the following Python packages:
 - [Python 3.11.2](https://python.org)
 - [asif 0.3.2](https://github.com/minus7/asif)
 - [python-dotenv 1.0.0](https://github.com/theskumar/python-dotenv)
 - [YOURLS](https://github.com/YOURLS/YOURLS) or some other URL shortening service
     - this project was built and tested against `YOURLS`, so if you use something else you will likely need to modify this code
+- [colorlog 6.6.0](https://github.com/borntyping/python-colorlog)
 
 From your terminal, and in whichever directory you would like to save and run from:
 ```
@@ -54,7 +56,7 @@ Otherwise, as previously mentioned, send the ``​`connect`` command with your c
 
 ----    
 #### Troubleshooting
-There is very minimal logging, most errors are just printed to `stdout`
+There is minimal error reporting. Most errors are just logged to `stdout`. 
 
 ----
 Special thanks to [StevenB](https://github.com/thebells1111) for creating and maintaining [The Split Kit](https://thesplitkit.com)
