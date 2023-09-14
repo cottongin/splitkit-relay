@@ -293,7 +293,8 @@ async def con(message):
     await socket.wait()
     try:
         await socket.connect(url, namespaces=["/event"])
-        await message.reply("Connected!")
+        follow_along = f"https://thesplitkit.com/live/{str(uuid)}"
+        await message.reply(f"Connected! Follow along at: {follow_along}")
     except Exception as err:
         logger.exception(err)
         await message.reply("I couldn't connect")
