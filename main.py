@@ -289,6 +289,8 @@ async def con(message):
     if "splitkit" in url:
         uuid = url.split("live/")[-1].replace("/", "")
         url = f"https://curiohoster.com/event?event_id={uuid}"
+    else:
+        uuid = url.split("=")[1]
     await socket.disconnect()
     await socket.wait()
     try:
