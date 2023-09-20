@@ -224,6 +224,7 @@ async def connected():
         logger.debug(f"Joining {chan}")
         await bot.join(chan)
     if URL:
+        # from .env file
         if "splitkit" in URL:
             # swap out the splitkit URL with the curiohoster websocket direct
             uuid = URL.split("live/")[-1].replace("/", "")
@@ -236,6 +237,26 @@ async def connected():
             "lastMsg": "nothing",
             "activeGUID": "",
         }
+
+
+@bot.on_message(re.compile("^`reset"))
+async def reset(message):
+    if message.sender.name not in ADMINS:
+        return
+    global MESSAGES
+    try:
+        MESSAGES = {
+            "lastImg": "",
+            "lastMsg": "nothing",
+            "activeGUID": "",
+        }
+        await message.reply("Done")
+    except Exception as err:
+        logger.exception(err)
+        # the first nick in the ADMINS list is considered the primary bot operator
+        # this will send a message to them saying the /join failed
+        target = ADMINS[0]
+        await bot.get_user(target).message("error resetting MESSAGES {}".format(err))
 
 
 @bot.on_message(re.compile("^`join"))
@@ -276,8 +297,20 @@ async def part(message):
     await bot.get_user(target).message("Left {}".format(message.recipient))
 
 
+@bot.on_message(re.compile("^`linkme[A-Za-z0-9]+"))
+@bot.on_message(re.compile("^`linkme$"))
+async def linkme(message):
+    if URL:
+        url = URL
+        uuid = url.split("=")[1]
+        await message.reply(f"Follow along at: https://thesplitkit.com/live/{str(uuid)}")
+    else:
+        await message.reply("I'm not connected to an event.")
+
+
 @bot.on_message(re.compile("^`connect"))
 async def con(message):
+    global URL, MESSAGES
     if message.sender.name not in ADMINS:
         return
     try:
@@ -291,12 +324,18 @@ async def con(message):
         url = f"https://curiohoster.com/event?event_id={uuid}"
     else:
         uuid = url.split("=")[1]
+    MESSAGES = {
+        "lastImg": "",
+        "lastMsg": "nothing",
+        "activeGUID": "",
+    }
     await socket.disconnect()
     await socket.wait()
     try:
         await socket.connect(url, namespaces=["/event"])
         follow_along = f"https://thesplitkit.com/live/{str(uuid)}"
         await message.reply(f"Connected! Follow along at: {follow_along}")
+        URL = url
     except Exception as err:
         logger.exception(err)
         await message.reply("I couldn't connect")
