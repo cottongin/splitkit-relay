@@ -15,13 +15,15 @@ import re
 import sys
 import urllib.parse as ul
 
+import datetime
+
 # setup logging
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '-l',
-    '--loglevel',
-    default='warning',
-    help='Provide logging level. Example --loglevel debug, default=warning'
+    "-l",
+    "--loglevel",
+    default="warning",
+    help="Provide logging level. Example --loglevel debug, default=warning",
 )
 args = parser.parse_args()
 colorlog.basicConfig(
@@ -33,7 +35,7 @@ fmt = colorlog.ColoredFormatter(
     "%(white)s%(asctime)s%(reset)s | %(name)-15s | %(log_color)s%(levelname)-8s%(reset)s | %(blue)s%(filename)s:%(lineno)s%(reset)s | %(process)d >>> %(log_color)s%(message)s%(reset)s"
 )
 stdout.setFormatter(fmt)
-if (logger.hasHandlers()):
+if logger.hasHandlers():
     logger.handlers.clear()
 logger.propagate = False
 logger.addHandler(stdout)
@@ -115,8 +117,28 @@ async def my_message(event, data):
     """Main socket listener"""
     global MESSAGES
 
-    _ = data.pop("value", None)  # remove value information that the relay doesn't use
+    if event != "remoteValue":
+        return
+
+    try:
+        _ = data.pop(
+            "value", None
+        )  # remove value information that the relay doesn't use
+    except AttributeError as err:
+        logger.info(data)
+        pass
+    except Exception as err:
+        logger.error(err)
     logger.info(f"Event received: {event}\nMessage: {data}")
+
+    # _ = data.pop("value", None)  # remove value information that the relay doesn't use
+    # logger.info(f"Event received: {event}\nMessage: {data}")
+
+    now = int(datetime.datetime.utcnow().timestamp())
+    then = MESSAGES.get("timestamp", 0)
+    if now == then:
+        return
+    MESSAGES["timestamp"] = now
 
     # set the last message to nothing so the relay does not emit something is playing when `np is used
     if not data:
@@ -125,6 +147,7 @@ async def my_message(event, data):
 
     # compare the block GUID to the last message the relay sent so it doesn't spam events
     guid = data.get("blockGuid", "guid")
+    logger.info(f"GUIDS: {guid}\t||\t{MESSAGES.get('activeGUID')}")
     if guid == MESSAGES.get("activeGUID"):
         return
 
@@ -154,7 +177,7 @@ async def my_message(event, data):
     try:
         line.remove(TEXTTOSTRIP)
     except ValueError as _:
-        logger.error(_)
+        logger.warning(_)
         pass
     except Exception as _:
         logger.exception(_)
@@ -178,8 +201,17 @@ async def my_message(event, data):
     message = message.strip()
     message = " ".join(message.split())
 
+    # # emit message
+    # logger.info("Channels: {}".format(", ".join(c for c in CHANNELS)))
+    # for chan in CHANNELS:
+    #     await bot.message(chan, f"{image}")
+    #     await bot.message(chan, f"Now Playing: {message}")
+
     # emit message
-    for chan in CHANNELS:
+    channels = bot._channels
+    # print(channels)
+    logger.info("Channels: {}".format(", ".join(c for c in CHANNELS)))
+    for chan in channels.keys():
         await bot.message(chan, f"{image}")
         await bot.message(chan, f"Now Playing: {message}")
 
@@ -243,13 +275,24 @@ async def connected():
 async def reset(message):
     if message.sender.name not in ADMINS:
         return
-    global MESSAGES
+    global MESSAGES, CHANNELS
     try:
         MESSAGES = {
             "lastImg": "",
             "lastMsg": "nothing",
             "activeGUID": "",
         }
+        # reset channels, this hopefully prevents multiple messages?
+        CHANNELS = []
+        # for channel in bot._channels.values():
+        #     CHANNELS.append(channel.name)
+        # bot.part(channel)
+        # now leave every channel
+        for chan in bot._channels.values():
+            bot.part(chan)
+        CHANNELS.append("#skr")  # always join testing channel
+        # CHANNELS = list(set(CHANNELS))  # dedupe, just in case
+        bot.join("#skr")  # always join testing channel
         await message.reply("Done")
     except Exception as err:
         logger.exception(err)
@@ -272,7 +315,7 @@ async def join(message):
         logger.exception(err)
         # the first nick in the ADMINS list is considered the primary bot operator
         # this will send a message to them saying the /join failed
-        target = ADMINS[0] 
+        target = ADMINS[0]
         await bot.get_user(target).message("error joining {}".format(channel))
 
 
@@ -284,17 +327,18 @@ async def part(message):
     if message.sender.name not in ADMINS:
         return
     global CHANNELS
-    chan = message.recipient
+    chan = message.recipient.name
     try:
+        print(CHANNELS, chan)
         CHANNELS.remove(chan)
     except Exception as err:
         logger.exception(err)
         pass
-    await message.recipient.part()
+    await message.recipient.part("adios")
     # the first nick in the ADMINS list is considered the primary bot operator
     # this will send a message to them saying the bot left a channel
     target = ADMINS[0]
-    await bot.get_user(target).message("Left {}".format(message.recipient))
+    await bot.get_user(target).message("Left {}".format(message.recipient.name))
 
 
 @bot.on_message(re.compile("^`linkme[A-Za-z0-9]+"))
@@ -303,7 +347,9 @@ async def linkme(message):
     if URL:
         url = URL
         uuid = url.split("=")[1]
-        await message.reply(f"Follow along at: https://thesplitkit.com/live/{str(uuid)}")
+        await message.reply(
+            f"Follow along at: https://thesplitkit.com/live/{str(uuid)}"
+        )
     else:
         await message.reply("I'm not connected to an event.")
 
