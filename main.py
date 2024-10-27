@@ -230,7 +230,7 @@ async def postToYourls(params={}):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                "https://therelay.cc/yourls-api.php", params=params
+                CONFIG.get("YOURLSAPIURL"), params=params
             ) as resp:
                 logger.debug(resp.status)
                 return await resp.json()
