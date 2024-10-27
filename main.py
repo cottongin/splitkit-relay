@@ -79,9 +79,12 @@ MESSAGES = {}
 try:
     with open("MESSAGES.json", "r") as f:
         MESSAGES = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    with open("MESSAGES.json", "w") as f:
+        json.dump({}, f)
 except Exception as err:
     logger.exception(err)
-    pass
+
 NSPASS = CONFIG.get("NSPASS")
 
 
