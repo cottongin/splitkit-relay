@@ -1,0 +1,5 @@
+aiohttp==3.10.10
+asif==0.3.2
+colorlog==6.6.0
+python-dotenv==1.0.1
+python-socketio==5.11.4

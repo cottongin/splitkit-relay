@@ -1,6 +1,6 @@
 env
 .env
-.MESSAGES.json
+MESSAGES.json
 __pycache__/
 *.egg-info/
 *.egg
