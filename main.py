@@ -14,15 +14,29 @@ import socketio
 import re
 import sys
 import urllib.parse as ul
-
 import datetime
+
+
+import threading
+import webserver
+
+async def process_boostagram(output_message):
+    print("From main.py:" + output_message)
+    # Send the output message to the IRC chat
+    for chan in bot._channels.values():
+        await bot.message(chan.name, output_message)
+
+# Start the web server in a separate thread
+web_server_thread = threading.Thread(target=webserver.start_web_server, args=(process_boostagram,))
+web_server_thread.daemon = True
+web_server_thread.start()
 
 # setup logging
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-l",
     "--loglevel",
-    default="warning",
+    default="debug",
     help="Provide logging level. Example --loglevel debug, default=warning",
 )
 args = parser.parse_args()
