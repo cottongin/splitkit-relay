@@ -20,16 +20,28 @@ import datetime
 import threading
 import webserver
 
+# load .env file
+CONFIG = dotenv_values(".env")
+
+###
+# Boost Bot Section
+###
 async def process_boostagram(output_message):
     print("From main.py:" + output_message)
     # Send the output message to the IRC chat
     for chan in bot._channels.values():
         await bot.message(chan.name, output_message)
 
-# Start the web server in a separate thread
-web_server_thread = threading.Thread(target=webserver.start_web_server, args=(process_boostagram,))
-web_server_thread.daemon = True
-web_server_thread.start()
+if CONFIG.get("ENABLEBOOSTBOT", "false").lower() == "true":
+    # Start the web server in a separate thread
+    web_server_thread = threading.Thread(target=webserver.start_web_server, args=(process_boostagram,))
+    web_server_thread.daemon = True
+    web_server_thread.start()
+
+###
+# End Boost Bot Section
+###
+
 
 # setup logging
 parser = argparse.ArgumentParser()
@@ -55,8 +67,7 @@ logger.propagate = False
 logger.addHandler(stdout)
 logger.info("Logger initialized.")
 
-# load .env file
-CONFIG = dotenv_values(".env")
+
 
 # load admins
 ADMINS = None
@@ -476,6 +487,10 @@ if __name__ == "__main__":
         tasks.exception()
     finally:
         loop.close()
+
+
+
+
 
 """
 TODO
