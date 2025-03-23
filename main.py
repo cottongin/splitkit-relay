@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "-l",
     "--loglevel",
-    default="debug",
+    default="warning",
     help="Provide logging level. Example --loglevel debug, default=warning",
 )
 args = parser.parse_args()
